@@ -22,7 +22,7 @@ package {
 }
 
 cc_binary {
-    name: "android.hardware.graphics.composer3-service",
+    name: "android.hardware.graphics.composer3-service.example",
 	relative_install_path: "hw",
     init_rc: ["android.hardware.graphics.composer3-service.rc"],
     vintf_fragments: ["android.hardware.graphics.composer3-service.xml"],

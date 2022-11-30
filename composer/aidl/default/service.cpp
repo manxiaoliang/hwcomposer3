@@ -31,8 +31,10 @@ using android::sp;
 
 int main(int /*argc*/, char* argv[]) {
     InitLogging(argv, android::base::LogdLogger(android::base::SYSTEM));
-    //LOG(INFO) << "======  hwc3 starting up";
-
+    LOG(INFO) << "hwc3 starting up";
+    
+    ABinderProcess_setThreadPoolMaxThreadCount(5);
+    
     // same as SF main thread
     struct sched_param param = {0};
     param.sched_priority = 2;
@@ -43,27 +45,20 @@ int main(int /*argc*/, char* argv[]) {
     std::unique_ptr<IComposerHal> halImpl = IComposerHal::create();
     CHECK(halImpl != nullptr);
 
-    //LOG(INFO) << "======  IComposerHal::create";
     std::shared_ptr<Composer> composer = ndk::SharedRefBase::make<Composer>(std::move(halImpl));
     CHECK(composer != nullptr);
 
-    //LOG(INFO) << "======  create Composer";
     const std::string instance = std::string() + Composer::descriptor + "/default";
 
-    //LOG(INFO) << "====== " << instance;
-    //LOG(INFO) << "====== binder  " << composer->asBinder().get();
     binder_status_t status =
             AServiceManager_addService(composer->asBinder().get(), instance.c_str());
-    //LOG(INFO) << "======  AServiceManager_addService " << status;
     CHECK(status == STATUS_OK);
     
     // Thread pool for vendor libbinder for internal vendor services
-    android::ProcessState::self()->setThreadPoolMaxThreadCount(2);
-    android::ProcessState::self()->startThreadPool();
-
+    // android::ProcessState::self()->setThreadPoolMaxThreadCount(2);
+    // android::ProcessState::self()->startThreadPool();
     // Thread pool for system libbinder (via libbinder_ndk) for aidl services
     // IComposer and IDisplay
-    ABinderProcess_setThreadPoolMaxThreadCount(5);
     ABinderProcess_startThreadPool();
     ABinderProcess_joinThreadPool();
 

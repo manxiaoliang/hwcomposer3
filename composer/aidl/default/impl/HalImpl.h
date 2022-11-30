@@ -155,9 +155,12 @@ class HalImpl : public IComposerHal {
 
 private:
     template <typename T>
-    bool initDispatch(hwc2_function_descriptor_t desc, T* outPfn);
-    bool initDispatch();
+    bool initOptionalDispatch(hwc2_function_descriptor_t desc, T* outPfn); 
 
+    template <typename T>
+    bool initDispatch(hwc2_function_descriptor_t desc, T* outPfn);
+
+    bool initDispatch();
     void initCaps();
 
     struct {
@@ -241,17 +244,12 @@ private:
         HWC2_PFN_SET_LAYER_GENERIC_METADATA setLayerGenericMetadata;
         HWC2_PFN_GET_LAYER_GENERIC_METADATA_KEY getLayerGenericMetadataKey;
     } mDispatch = {};
-    //std::unique_ptr<ExynosDevice> mDevice;
-    //std::unique_ptr<hwc2_device_t> mDevice;
+
     hwc2_device_t* mDevice;
 
     EventCallback* mEventCallback;
-// #ifdef USES_HWC_SERVICES
-//     std::unique_ptr<ExynosHWCCtx> mHwcCtx;
-// #endif
     std::unordered_set<Capability> mCaps;
     
-    //std::map<Display, std::set<Layer>> mClientCompositionLayers;
     std::map<int64_t, std::unordered_set<int64_t>> mClientCompositionLayers;
 
     constexpr static std::array<float, 16> mkIdentity = {

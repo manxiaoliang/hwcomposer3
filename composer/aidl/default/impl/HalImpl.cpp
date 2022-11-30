@@ -31,7 +31,7 @@ namespace aidl::android::hardware::graphics::composer3::impl {
 std::unique_ptr<IComposerHal> IComposerHal::create() {
     hwc2_device_t* device = HwcLoader::load();
     if (!device) {
-        LOG(INFO) << "======  HwcLoader::load() failed";
+        ALOGE("HwcLoader::load() failed");
         return nullptr;
     }
     //LOG(INFO) << "======  " <<device->common.module->name;
@@ -112,18 +112,6 @@ HalImpl::HalImpl(hwc2_device_t* device) : mDevice(device) {
         mDevice->common.close(&mDevice->common);
         mDevice = nullptr;
     }
-
-// #ifdef USES_HWC_SERVICES
-    // LOG(DEBUG) << "Start HWCService";
-    // mHwcCtx = std::make_unique<ExynosHWCCtx>();
-    // memset(&mHwcCtx->base, 0, sizeof(mHwcCtx->base));
-    // mHwcCtx->device = mDevice.get();
-
-    // auto hwcService = ::android::ExynosHWCService::getExynosHWCService();
-    // hwcService->setExynosHWCCtx(mHwcCtx.get());
-    // This callback is for DP hotplug event if connected
-    // hwcService->setBootFinishedCallback(...);
-// #endif
 }
 
 HalImpl::~HalImpl(){
@@ -161,16 +149,27 @@ bool HalImpl::initDispatch(hwc2_function_descriptor_t desc, T* outPfn) {
     }
 }
 
+template <typename T>
+bool HalImpl::initOptionalDispatch(hwc2_function_descriptor_t desc, T* outPfn) {
+    auto pfn = mDevice->getFunction(mDevice, desc);
+    if (pfn) {
+        *outPfn = reinterpret_cast<T>(pfn);
+        return true;
+    } else {
+        return false;
+    }
+}
+
 bool HalImpl::initDispatch() {
-    if (!initDispatch(HWC2_FUNCTION_ACCEPT_DISPLAY_CHANGES, &mDispatch.acceptDisplayChanges) ||
+    if (
+        !initDispatch(HWC2_FUNCTION_ACCEPT_DISPLAY_CHANGES, &mDispatch.acceptDisplayChanges) ||
         !initDispatch(HWC2_FUNCTION_CREATE_LAYER, &mDispatch.createLayer) ||
         !initDispatch(HWC2_FUNCTION_CREATE_VIRTUAL_DISPLAY, &mDispatch.createVirtualDisplay) ||
         !initDispatch(HWC2_FUNCTION_DESTROY_LAYER, &mDispatch.destroyLayer) ||
         !initDispatch(HWC2_FUNCTION_DESTROY_VIRTUAL_DISPLAY, &mDispatch.destroyVirtualDisplay) ||
         !initDispatch(HWC2_FUNCTION_DUMP, &mDispatch.dump) ||
         !initDispatch(HWC2_FUNCTION_GET_ACTIVE_CONFIG, &mDispatch.getActiveConfig) ||
-        !initDispatch(HWC2_FUNCTION_GET_CHANGED_COMPOSITION_TYPES,
-                      &mDispatch.getChangedCompositionTypes) ||
+        !initDispatch(HWC2_FUNCTION_GET_CHANGED_COMPOSITION_TYPES, &mDispatch.getChangedCompositionTypes) ||
         !initDispatch(HWC2_FUNCTION_GET_CLIENT_TARGET_SUPPORT, &mDispatch.getClientTargetSupport) ||
         !initDispatch(HWC2_FUNCTION_GET_COLOR_MODES, &mDispatch.getColorModes) ||
         !initDispatch(HWC2_FUNCTION_GET_DISPLAY_ATTRIBUTE, &mDispatch.getDisplayAttribute) ||
@@ -180,8 +179,7 @@ bool HalImpl::initDispatch() {
         !initDispatch(HWC2_FUNCTION_GET_DISPLAY_TYPE, &mDispatch.getDisplayType) ||
         !initDispatch(HWC2_FUNCTION_GET_DOZE_SUPPORT, &mDispatch.getDozeSupport) ||
         !initDispatch(HWC2_FUNCTION_GET_HDR_CAPABILITIES, &mDispatch.getHdrCapabilities) ||
-        !initDispatch(HWC2_FUNCTION_GET_MAX_VIRTUAL_DISPLAY_COUNT,
-                      &mDispatch.getMaxVirtualDisplayCount) ||
+        !initDispatch(HWC2_FUNCTION_GET_MAX_VIRTUAL_DISPLAY_COUNT, &mDispatch.getMaxVirtualDisplayCount) ||
         !initDispatch(HWC2_FUNCTION_GET_RELEASE_FENCES, &mDispatch.getReleaseFences) ||
         !initDispatch(HWC2_FUNCTION_PRESENT_DISPLAY, &mDispatch.presentDisplay) ||
         !initDispatch(HWC2_FUNCTION_REGISTER_CALLBACK, &mDispatch.registerCallback) ||
@@ -193,11 +191,11 @@ bool HalImpl::initDispatch() {
         !initDispatch(HWC2_FUNCTION_SET_LAYER_BLEND_MODE, &mDispatch.setLayerBlendMode) ||
         !initDispatch(HWC2_FUNCTION_SET_LAYER_BUFFER, &mDispatch.setLayerBuffer) ||
         !initDispatch(HWC2_FUNCTION_SET_LAYER_COLOR, &mDispatch.setLayerColor) ||
-        !initDispatch(HWC2_FUNCTION_SET_LAYER_COMPOSITION_TYPE,
-                      &mDispatch.setLayerCompositionType) ||
+        !initDispatch(HWC2_FUNCTION_SET_LAYER_COMPOSITION_TYPE, &mDispatch.setLayerCompositionType) ||
         !initDispatch(HWC2_FUNCTION_SET_LAYER_DATASPACE, &mDispatch.setLayerDataspace) ||
         !initDispatch(HWC2_FUNCTION_SET_LAYER_DISPLAY_FRAME, &mDispatch.setLayerDisplayFrame) ||
-        !initDispatch(HWC2_FUNCTION_SET_LAYER_PLANE_ALPHA, &mDispatch.setLayerPlaneAlpha)) {
+        !initDispatch(HWC2_FUNCTION_SET_LAYER_PLANE_ALPHA, &mDispatch.setLayerPlaneAlpha)
+        ) {
         return false;
     }
 
@@ -216,9 +214,48 @@ bool HalImpl::initDispatch() {
         !initDispatch(HWC2_FUNCTION_SET_OUTPUT_BUFFER, &mDispatch.setOutputBuffer) ||
         !initDispatch(HWC2_FUNCTION_SET_POWER_MODE, &mDispatch.setPowerMode) ||
         !initDispatch(HWC2_FUNCTION_SET_VSYNC_ENABLED, &mDispatch.setVsyncEnabled) ||
-        !initDispatch(HWC2_FUNCTION_VALIDATE_DISPLAY, &mDispatch.validateDisplay)) {
+        !initDispatch(HWC2_FUNCTION_VALIDATE_DISPLAY, &mDispatch.validateDisplay)
+        ) {
         return false;
     }
+    //  2.2
+    initOptionalDispatch(HWC2_FUNCTION_SET_LAYER_FLOAT_COLOR, &mDispatch.setLayerFloatColor);
+    initOptionalDispatch(HWC2_FUNCTION_SET_LAYER_PER_FRAME_METADATA,&mDispatch.setLayerPerFrameMetadata) ;
+    initOptionalDispatch(HWC2_FUNCTION_GET_PER_FRAME_METADATA_KEYS, &mDispatch.getPerFrameMetadataKeys) ;
+    initOptionalDispatch(HWC2_FUNCTION_SET_READBACK_BUFFER, &mDispatch.setReadbackBuffer);
+    initOptionalDispatch(HWC2_FUNCTION_GET_READBACK_BUFFER_ATTRIBUTES,&mDispatch.getReadbackBufferAttributes) ;
+    initOptionalDispatch(HWC2_FUNCTION_GET_READBACK_BUFFER_FENCE,&mDispatch.getReadbackBufferFence);
+    initOptionalDispatch(HWC2_FUNCTION_GET_RENDER_INTENTS, &mDispatch.getRenderIntents);
+    initOptionalDispatch(HWC2_FUNCTION_SET_COLOR_MODE_WITH_RENDER_INTENT, &mDispatch.setColorModeWithRenderIntent);
+    initOptionalDispatch(HWC2_FUNCTION_GET_DATASPACE_SATURATION_MATRIX, &mDispatch.getDataspaceSaturationMatrix);
+   
+    //  2.3
+    if(!initDispatch(HWC2_FUNCTION_GET_DISPLAY_CAPABILITIES, &mDispatch.getDisplayCapabilities)||
+       !initDispatch(HWC2_FUNCTION_SET_DISPLAY_BRIGHTNESS, &mDispatch.setDisplayBrightness)){
+        return false;
+    }
+
+    initOptionalDispatch(HWC2_FUNCTION_GET_DISPLAY_IDENTIFICATION_DATA,&mDispatch.getDisplayIdentificationData);
+    initOptionalDispatch(HWC2_FUNCTION_SET_LAYER_COLOR_TRANSFORM, &mDispatch.setLayerColorTransform);
+    initOptionalDispatch(HWC2_FUNCTION_GET_DISPLAYED_CONTENT_SAMPLING_ATTRIBUTES,&mDispatch.getDisplayedContentSamplingAttributes);
+    initOptionalDispatch(HWC2_FUNCTION_SET_DISPLAYED_CONTENT_SAMPLING_ENABLED,&mDispatch.setDisplayedContentSamplingEnabled);
+    initOptionalDispatch(HWC2_FUNCTION_GET_DISPLAYED_CONTENT_SAMPLE, &mDispatch.getDisplayedContentSample);
+    initOptionalDispatch(HWC2_FUNCTION_SET_LAYER_PER_FRAME_METADATA_BLOBS, &mDispatch.setLayerPerFrameMetadataBlobs);
+    initOptionalDispatch(HWC2_FUNCTION_GET_DISPLAY_BRIGHTNESS_SUPPORT, &mDispatch.getDisplayBrightnessSupport);
+    //  2.4
+    if(!initDispatch(HWC2_FUNCTION_GET_DISPLAY_VSYNC_PERIOD, &mDispatch.getDisplayVsyncPeriod) ||
+       !initDispatch(HWC2_FUNCTION_SET_ACTIVE_CONFIG_WITH_CONSTRAINTS, &mDispatch.setActiveConfigWithConstraints)){
+        return false;
+    }
+ 
+    initOptionalDispatch(HWC2_FUNCTION_GET_DISPLAY_CONNECTION_TYPE, &mDispatch.getDisplayConnectionType);
+    initOptionalDispatch(HWC2_FUNCTION_SET_AUTO_LOW_LATENCY_MODE, &mDispatch.setAutoLowLatencyMode);
+    initOptionalDispatch(HWC2_FUNCTION_GET_SUPPORTED_CONTENT_TYPES, &mDispatch.getSupportedContentTypes);
+    initOptionalDispatch(HWC2_FUNCTION_SET_CONTENT_TYPE, &mDispatch.setContentType);
+    initOptionalDispatch(HWC2_FUNCTION_GET_CLIENT_TARGET_PROPERTY, &mDispatch.getClientTargetProperty) ;
+    initOptionalDispatch(HWC2_FUNCTION_SET_LAYER_GENERIC_METADATA, &mDispatch.setLayerGenericMetadata);
+    initOptionalDispatch(HWC2_FUNCTION_GET_LAYER_GENERIC_METADATA_KEY, &mDispatch.getLayerGenericMetadataKey);
+ 
 
     return true;
 }
@@ -404,7 +441,8 @@ int32_t HalImpl::getDisplayBrightnessSupport(int64_t display, bool& outSupport) 
 
 int32_t HalImpl::getDisplayCapabilities(int64_t display,
                                         std::vector<DisplayCapability>* caps) {
-    if (!mDispatch.getDisplayConfigs) {
+    if (!mDispatch.getDisplayCapabilities) {
+        ALOGE(" unsupported getDisplayCapabilities ");
         return HWC2_ERROR_UNSUPPORTED;
     }
 
@@ -709,7 +747,10 @@ int32_t HalImpl::clearBootDisplayConfig([[maybe_unused]] int64_t display) {
 
 int32_t HalImpl::getPreferredBootDisplayConfig([[maybe_unused]] int64_t display,
                                                [[maybe_unused]] int32_t* config) {
-        return HWC2_ERROR_UNSUPPORTED;
+        //return HWC2_ERROR_UNSUPPORTED;
+        *config = 1;
+        return HWC2_ERROR_NONE;
+        
 }
 
 int32_t HalImpl::setAutoLowLatencyMode(int64_t display, bool on) {
@@ -1009,7 +1050,8 @@ int32_t HalImpl::setLayerVisibleRegion(int64_t display, int64_t layer,
 int32_t HalImpl::setLayerBrightness([[maybe_unused]] int64_t display, 
                                     [[maybe_unused]] int64_t layer, 
                                     [[maybe_unused]] float brightness) {
-    return HWC2_ERROR_UNSUPPORTED;
+    //return HWC2_ERROR_UNSUPPORTED;
+    return HWC2_ERROR_NONE;
 }
 
 int32_t HalImpl::setLayerZOrder(int64_t display, int64_t layer, uint32_t z) {
@@ -1050,7 +1092,7 @@ int32_t HalImpl::setPowerMode(int64_t display, PowerMode mode) {
     a2h::translate(mode, hwcMode);
     return mDispatch.setPowerMode(mDevice, display, hwcMode);
 }
-// ===
+
 int32_t HalImpl::setReadbackBuffer(int64_t display, buffer_handle_t buffer,
                                    const ndk::ScopedFileDescriptor& releaseFence) {
     if (!mDispatch.setReadbackBuffer) {
@@ -1115,10 +1157,12 @@ int32_t HalImpl::validateDisplay(int64_t display, std::vector<int64_t>* outChang
     *outDisplayRequestMask = displayReqs;
     h2a::translate(hwcRequestedLayers, *outRequestedLayers);
 
-    hwc_client_target_property hwcProperty;
-    if (!mDispatch.getClientTargetProperty(mDevice,display,&hwcProperty)) {
-        h2a::translate(hwcProperty, *outClientTargetProperty);
-    } // else ignore this error
+    if (mDispatch.getClientTargetProperty)
+    {
+        hwc_client_target_property hwcProperty;
+        [[maybe_unused]]auto err = mDispatch.getClientTargetProperty(mDevice,display,&hwcProperty);
+        h2a::translate(hwcProperty, *outClientTargetProperty); 
+    }
 
     return HWC2_ERROR_NONE;
 }

@@ -6,5 +6,6 @@
             <name>IComposer</name>
             <instance>default</instance>
         </interface>
+        <fqname>IComposer/default</fqname>
     </hal>
 </manifest>
